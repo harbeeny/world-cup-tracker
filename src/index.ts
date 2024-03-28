@@ -32,41 +32,41 @@ const records: Records = {};
 records[2020] = [
     {
         country: {
-            id: '1',
-            name: 'India'
+            id: 'USA',
+            name: 'United States'
         },
         players: [
             {
                 id: '1',
-                name: 'Virat Kohli',
-                number: 18,
-                position: 'Batsman'
+                name: 'Hunter Arbeeny',
+                number: 11,
+                position: 'st, cf'
             },
             {
                 id: '2',
-                name: 'Rohit Sharma',
-                number: 45,
-                position: 'Batsman'
+                name: 'Chrisitan Pulisic',
+                number: 10,
+                position: 'lw, st'
             }
         ]
     },
     {
         country: {
-            id: '2',
-            name: 'Australia'
+            id: 'ITA',
+            name: 'Italy'
         },
         players: [
             {
                 id: '1',
-                name: 'David Warner',
+                name: 'Giovanni Bonducci',
                 number: 31,
-                position: 'Batsman'
+                position: 'cb'
             },
             {
                 id: '2',
-                name: 'Steve Smith',
-                number: 49,
-                position: 'Batsman'
+                name: 'John Lotito',
+                number: 24,
+                position: 'cm'
             }
         ]
     }
@@ -74,41 +74,41 @@ records[2020] = [
 records[2021] = [
     {
         country: {
-            id: '1',
-            name: 'India'
+            id: 'USA',
+            name: 'United States'
         },
         players: [
             {
                 id: '1',
-                name: 'Virat Kohli',
-                number: 18,
-                position: 'Batsman'
+                name: 'Hunter Arbeeny',
+                number: 11,
+                position: 'st, cf'
             },
             {
                 id: '2',
-                name: 'Rohit Sharma',
-                number: 45,
-                position: 'Batsman'
+                name: 'Chrisitan Pulisic',
+                number: 10,
+                position: 'lw, st'
             }
         ]
     },
     {
         country: {
-            id: '2',
-            name: 'Australia'
+            id: 'ITA',
+            name: 'Italy'
         },
         players: [
             {
                 id: '1',
-                name: 'David Warner',
+                name: 'Giovanni Bonducci',
                 number: 31,
-                position: 'Batsman'
+                position: 'cb'
             },
             {
                 id: '2',
-                name: 'Steve Smith',
-                number: 49,
-                position: 'Batsman'
+                name: 'John Lotito',
+                number: 24,
+                position: 'cm'
             }
         ]
     }
@@ -122,7 +122,8 @@ app.get('/', (request: Request, response: Response) => {
 });
 
 app.get('/years', (request: Request, response: Response) => {
-    response.send(Object.keys(records));
+    const yearKeys = Object.keys(records).map(key => Number(key));
+    response.send(yearKeys);
 });
 
 app.get('/years/:year/countries', (request: Request, response: Response) => {
