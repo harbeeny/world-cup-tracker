@@ -135,8 +135,13 @@ app.get('/years/:year/countries', (request: Request, response: Response) => {
 app.post('/years/:year/countries', (request: Request, response: Response) => {
     const year = parseInt(request.params.year);
     const { id, name } = request.body;
+
     if (!id || !name) {
         return response.status(400).send('Please provide all required fields!');
+    }
+
+    if (!records[year]) {
+        records[year] = [];
     }
 
     const country: Country = {
@@ -144,13 +149,20 @@ app.post('/years/:year/countries', (request: Request, response: Response) => {
         name
     };
 
-    const record = records[year]
-    if (record) {
-        record.push({ country, players: [] });
-    } else {
-        records[year] = [{ country, players: [] }];
-    }
-    response.send(record);
+    const newRecord = { country, players: [] };
+    records[year].push(newRecord);
+
+    // Ensure you're returning the newRecord or structure similar to what the test expects
+    return response.status(200).send(newRecord);
+
+
+    // const record = records[year]
+    // if (record) {
+    //     record.push({ country, players: [] });
+    // } else {
+    //     records[year] = [{ country, players: [] }];
+    // }
+    // response.send(record);
 });
 
 app.get('/years/:year/countries/:countriesId/players', (req: Request, res: Response) => {
@@ -193,7 +205,7 @@ app.post('/years/:year/countries/:countryId/players', (req: Request, res: Respon
     };
     countryRecord.players.push(player);
     res.send(countryRecord.players);
-})
+});
 
 app.listen(3000, () => {
     console.log("Server is running at http://localhost:3000/");

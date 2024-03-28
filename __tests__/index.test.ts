@@ -47,8 +47,7 @@ describe("GET /years/:year/countries", () => {
                   "id": "ITA",
                   "name": "Italy"
                 }
-            ]
-        );
+            ]);
     });
 
     it("should return an array of objects of countries from 2021", async () => {
@@ -66,6 +65,27 @@ describe("GET /years/:year/countries", () => {
             ]
         );
     });
+
+});
+
+describe("POST /years/:year/countries", () => {
+    it("should successfully create a new country record for the given year with port 200", async () => {
+        const newCountry = { id: "FRA", name: "France" };
+        const res = await request(app).post("/years/2022/countries").send(newCountry);
+        expect(res.status).toBe(200);
+        expect (res.body).toEqual({
+                country: expect.objectContaining(newCountry),
+                players: [],
+        });
+
+    });
+
+    it("should return 400 Bad Request when missing required fields", async () => {
+        const incompleteData = { id: "FRA"};
+        const res = await request(app).post("/years/2022/countries").send(incompleteData);
+        expect(res.status).toBe(400);
+    });
+
 
 });
 
@@ -114,6 +134,23 @@ describe("GET /years/:year/countries/:countries/players", () => {
             ]
         );
     });
+
+});
+
+describe("POST /years/:year/countries/:countryid/players", () => {
+    it("should successfully create a new player record for the given country in that year with port 200", async () => {
+        const newPlayer = { id: "3", name: "Gianluigi Buffon", position:"gk", number: 1 };
+        const res = await request(app).post("/years/2021/countries/ITA/players").send(newPlayer);
+        expect(res.status).toBe(200);
+        expect (res.body).toEqual(expect.arrayContaining([expect.objectContaining(newPlayer)]));
+    });
+
+    it("should return 400 Bad Request when missing required fields", async () => {
+        const incompleteData = { id: "3", position:"gk"};
+        const res = await request(app).post("/years/2022/countries").send(incompleteData);
+        expect(res.status).toBe(400);
+    });
+
 
 });
 
