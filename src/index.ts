@@ -3,6 +3,7 @@ import express, {
     Request,
     Response,
 } from "express";
+import { request } from "http";
 
 // Create Score Results of a Match API endpoints 
 // Write unit tests for these endpoints (jest & supertest) 
@@ -24,95 +25,109 @@ interface Record {
     players: Player[];
 }
 
-interface Records {
-    [key: number]: Record[];
+interface YearRecord {
+    countries: Record[];
+    winner?: string;
 }
 
-const records: Records = {};
-records[2020] = [
-    {
-        country: {
-            id: 'USA',
-            name: 'United States'
-        },
-        players: [
+interface Records {
+    [key: number]: YearRecord;
+}
+
+const records: Records = {
+    2018: {
+        countries: [
             {
-                id: '1',
-                name: 'Hunter Arbeeny',
-                number: 11,
-                position: 'st, cf'
+                country: {
+                    id: 'USA',
+                    name: 'United States',
+                },
+                players: [
+                    {
+                        id: '1',
+                        name: 'Hunter Arbeeny',
+                        number: 11,
+                        position: 'st, cf',
+                    },
+                    {
+                        id: '2',
+                        name: 'Chrisitan Pulisic',
+                        number: 10,
+                        position: 'lw, st',
+                    },
+                ],
             },
             {
-                id: '2',
-                name: 'Chrisitan Pulisic',
-                number: 10,
-                position: 'lw, st'
-            }
-        ]
+                country: {
+                    id: 'ITA',
+                    name: 'Italy',
+                },
+                players: [
+                    {
+                        id: '1',
+                        name: 'Giovanni Bonducci',
+                        number: 31,
+                        position: 'cb',
+                    },
+                    {
+                        id: '2',
+                        name: 'John Lotito',
+                        number: 24,
+                        position: 'cm',
+                    },
+                ],
+            },
+        ],
+        winner: 'USA',
     },
-    {
-        country: {
-            id: 'ITA',
-            name: 'Italy'
-        },
-        players: [
+    2022: {
+        countries: [
             {
-                id: '1',
-                name: 'Giovanni Bonducci',
-                number: 31,
-                position: 'cb'
+                country: {
+                    id: 'USA',
+                    name: 'United States',
+                },
+                players: [
+                    {
+                        id: '1',
+                        name: 'Hunter Arbeeny',
+                        number: 11,
+                        position: 'st, cf',
+                    },
+                    {
+                        id: '2',
+                        name: 'Chrisitan Pulisic',
+                        number: 10,
+                        position: 'lw, st',
+                    },
+                ],
             },
             {
-                id: '2',
-                name: 'John Lotito',
-                number: 24,
-                position: 'cm'
-            }
-        ]
-    }
-];
-records[2021] = [
-    {
-        country: {
-            id: 'USA',
-            name: 'United States'
-        },
-        players: [
-            {
-                id: '1',
-                name: 'Hunter Arbeeny',
-                number: 11,
-                position: 'st, cf'
+                country: {
+                    id: 'ITA',
+                    name: 'Italy',
+                },
+                players: [
+                    {
+                        id: '1',
+                        name: 'Giovanni Bonducci',
+                        number: 31,
+                        position: 'cb',
+                    },
+                    {
+                        id: '2',
+                        name: 'John Lotito',
+                        number: 24,
+                        position: 'cm',
+                    },
+                ],
             },
-            {
-                id: '2',
-                name: 'Chrisitan Pulisic',
-                number: 10,
-                position: 'lw, st'
-            }
-        ]
+        ],
+        winner: 'ITA',
     },
-    {
-        country: {
-            id: 'ITA',
-            name: 'Italy'
-        },
-        players: [
-            {
-                id: '1',
-                name: 'Giovanni Bonducci',
-                number: 31,
-                position: 'cb'
-            },
-            {
-                id: '2',
-                name: 'John Lotito',
-                number: 24,
-                position: 'cm'
-            }
-        ]
-    }
-];
+};
+
+
 
 const app: Express = express();
 app.use(express.json());
@@ -126,10 +141,45 @@ app.get('/years', (request: Request, response: Response) => {
     response.send(yearKeys);
 });
 
+app.get('/years/:year/winner', (request: Request, response: Response) => {
+    const year = parseInt(request.params.year);
+    const yearRecord = records[year];
+    
+    if (!yearRecord || !yearRecord.winner) {
+        return response.status(404).send("Winner not found for the specified year");
+    }
+
+    response.status(200).send({year: year, winner: yearRecord.winner });
+})
+
+app.post('/years/:year/winner', (request: Request, response: Response) => {
+    const year = parseInt(request.params.year);
+    const { winner } = request.body;
+
+    if (!winner) {
+        return response.status(400).send("Winner information is required");
+    }
+
+    if (!records[year]) {
+        records[year] = { countries: [], winner: undefined};
+    }
+
+    records[year].winner = winner;
+
+    return response.status(200).send({ year: year, winner: records[year].winner });
+})
+
 app.get('/years/:year/countries', (request: Request, response: Response) => {
     const year = parseInt(request.params.year);
     const data = records[year] ?? [];
-    response.send(data.map((record) => record.country));
+    if (!data) {
+        return response.status(404).send("Year record not found.");
+    }
+    const countries = data.countries.map(({ country }) => ({ 
+        id: country.id, 
+        name: country.name,
+    }));
+    response.send(countries);
 });
 
 app.post('/years/:year/countries', (request: Request, response: Response) => {
@@ -141,16 +191,15 @@ app.post('/years/:year/countries', (request: Request, response: Response) => {
     }
 
     if (!records[year]) {
-        records[year] = [];
+        records[year] = { countries: [], winner: undefined };
     }
 
-    const country: Country = {
+    const newCountry: Country = {
         id,
         name
     };
-
-    const newRecord = { country, players: [] };
-    records[year].push(newRecord);
+    const newRecord = {country: newCountry, players: []}
+    records[year].countries.push(newRecord);
 
     // Ensure you're returning the newRecord or structure similar to what the test expects
     return response.status(200).send(newRecord);
@@ -170,9 +219,9 @@ app.get('/years/:year/countries/:countriesId/players', (req: Request, res: Respo
     const countryId = req.params.countriesId;
     const record = records[year];
     if (!record) {
-        return res.status(404).send('Record not found');
+        return res.status(404).send('Year Record not found');
     }
-    const countryRecord = record.find((record) => record.country.id === countryId);
+    const countryRecord = record.countries.find((record) => record.country.id === countryId);
     if (!countryRecord) {
         return res.status(404).send('Country not found');
     }
@@ -187,7 +236,7 @@ app.post('/years/:year/countries/:countryId/players', (req: Request, res: Respon
         return res.status(404).send('Record not found');
     }
     
-    const countryRecord = record.find((record) => record.country.id === countryId);
+    const countryRecord = record.countries.find((record) => record.country.id === countryId);
     if (!countryRecord) {
         return res.status(404).send('Country not found');
     }
