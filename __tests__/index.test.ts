@@ -72,7 +72,7 @@ describe("POST /years/:year/countries", () => {
     it("should successfully create a new country record for the given year with port 200", async () => {
         const newCountry = { id: "FRA", name: "France" };
         const res = await request(app).post("/years/2014/countries").send(newCountry);
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(201);
         expect (res.body).toEqual({
                 country: expect.objectContaining(newCountry),
                 players: [],
@@ -138,10 +138,10 @@ describe("GET /years/:year/countries/:countries/players", () => {
 });
 
 describe("POST /years/:year/countries/:countryid/players", () => {
-    it("should successfully create a new player record for the given country in that year with port 200", async () => {
+    it("should successfully create a new player record for the given country in that year with port 201", async () => {
         const newPlayer = { id: "3", name: "Gianluigi Buffon", position:"gk", number: 1 };
         const res = await request(app).post("/years/2022/countries/ITA/players").send(newPlayer);
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(201);
         expect (res.body).toEqual(expect.arrayContaining([expect.objectContaining(newPlayer)]));
     });
 
@@ -176,7 +176,7 @@ describe("POST /years/:year/winner", () => {
     it("should successfully create a winner record for that year with port 200", async () => {
         const newWinner = { winner: "FRA", year: 2014 };
         const res = await request(app).post("/years/2014/winner").send(newWinner);
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(201);
         expect (res.body).toEqual(expect.objectContaining(newWinner));
     });
 

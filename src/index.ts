@@ -166,7 +166,7 @@ app.post('/years/:year/winner', (request: Request, response: Response) => {
 
     records[year].winner = winner;
 
-    return response.status(200).send({ year: year, winner: records[year].winner });
+    return response.status(201).send({ year: year, winner: records[year].winner });
 })
 
 app.get('/years/:year/countries', (request: Request, response: Response) => {
@@ -202,7 +202,7 @@ app.post('/years/:year/countries', (request: Request, response: Response) => {
     records[year].countries.push(newRecord);
 
     // Ensure you're returning the newRecord or structure similar to what the test expects
-    return response.status(200).send(newRecord);
+    return response.status(201).send(newRecord);
 
 
     // const record = records[year]
@@ -253,7 +253,7 @@ app.post('/years/:year/countries/:countryId/players', (req: Request, res: Respon
         position
     };
     countryRecord.players.push(player);
-    res.send(countryRecord.players);
+    res.status(201).send(countryRecord.players);
 });
 
 app.listen(3000, () => {
