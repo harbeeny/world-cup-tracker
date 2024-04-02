@@ -4,9 +4,18 @@ import express, {
     Response,
 } from "express";
 import { request } from "http";
+import { Pool } from "pg";
 
 // Create Score Results of a Match API endpoints 
 // Write unit tests for these endpoints (jest & supertest) 
+
+const pool = new Pool({
+    user: 'postgres',
+    host: 'localhost',
+    database: 'postgres',
+    password: 'mysecretpassword',
+    port: 5432,
+});
 
 interface Country {
     id: string;
@@ -130,10 +139,21 @@ const records: Records = {
 
 
 const app: Express = express();
+const port = 3000;
 app.use(express.json());
 
 app.get('/', (request: Request, response: Response) => {
     response.send(records);
+});
+
+app.get('/data', async (req: Request, res: Response) => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM your_table');
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
 });
 
 app.get('/years', (request: Request, response: Response) => {
@@ -256,7 +276,7 @@ app.post('/years/:year/countries/:countryId/players', (req: Request, res: Respon
     res.status(201).send(countryRecord.players);
 });
 
-app.listen(3000, () => {
+app.listen(port, () => {
     console.log("Server is running at http://localhost:3000/");
 });
 
