@@ -8,6 +8,7 @@ const pool = new Pool({
     port: 5432,
 });
 
+
 async function fetchCountries() {
     const client = await pool.connect();
     try {
@@ -19,3 +20,5 @@ async function fetchCountries() {
 }
 
 fetchCountries().catch((err) => console.log(err.stack));
+
+export default pool;

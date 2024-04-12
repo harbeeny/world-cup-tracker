@@ -4,18 +4,11 @@ import express, {
     Response,
 } from "express";
 import { request } from "http";
-import { Pool } from "pg";
+
+import pool from "./db";
 
 // Create Score Results of a Match API endpoints 
-// Write unit tests for these endpoints (jest & supertest) 
-
-const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'postgres',
-    password: 'mysecretpassword',
-    port: 5432,
-});
+// Write unit tests for these endpoints (jest & supertest) ;
 
 interface Country {
     id: string;
@@ -140,7 +133,12 @@ const records: Records = {
 
 const app: Express = express();
 const port = 3000;
+
+// middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: false}));
+
+app.use("/")
 
 app.get('/', (request: Request, response: Response) => {
     response.send(records);
