@@ -1,281 +1,345 @@
-import express, {
-    Express,
-    Request,
-    Response,
-} from "express";
-import { request } from "http";
+import express, { Express, Request, Response } from "express";
 
-import pool from "./db";
+import { query } from "../module/db";
+import { error } from "console";
 
-// Create Score Results of a Match API endpoints 
+// Create Score Results of a Match API endpoints
 // Write unit tests for these endpoints (jest & supertest) ;
 
 interface Country {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 interface Player {
-    id: string;
-    name: string;
-    number: number;
-    position: string;
+  id: string;
+  name: string;
+  number: number;
+  position: string;
 }
 
 interface Record {
-    country: Country;
-    players: Player[];
+  country: Country;
+  players: Player[];
 }
 
 interface YearRecord {
-    countries: Record[];
-    winner?: string;
+  countries: Record[];
+  winner?: string;
 }
 
 interface Records {
-    [key: number]: YearRecord;
+  [key: number]: YearRecord;
 }
 
 const records: Records = {
-    2018: {
-        countries: [
-            {
-                country: {
-                    id: 'USA',
-                    name: 'United States',
-                },
-                players: [
-                    {
-                        id: '1',
-                        name: 'Hunter Arbeeny',
-                        number: 11,
-                        position: 'st, cf',
-                    },
-                    {
-                        id: '2',
-                        name: 'Chrisitan Pulisic',
-                        number: 10,
-                        position: 'lw, st',
-                    },
-                ],
-            },
-            {
-                country: {
-                    id: 'ITA',
-                    name: 'Italy',
-                },
-                players: [
-                    {
-                        id: '1',
-                        name: 'Giovanni Bonducci',
-                        number: 31,
-                        position: 'cb',
-                    },
-                    {
-                        id: '2',
-                        name: 'John Lotito',
-                        number: 24,
-                        position: 'cm',
-                    },
-                ],
-            },
+  2018: {
+    countries: [
+      {
+        country: {
+          id: "USA",
+          name: "United States",
+        },
+        players: [
+          {
+            id: "1",
+            name: "Hunter Arbeeny",
+            number: 11,
+            position: "st, cf",
+          },
+          {
+            id: "2",
+            name: "Chrisitan Pulisic",
+            number: 10,
+            position: "lw, st",
+          },
         ],
-        winner: 'USA',
-    },
-    2022: {
-        countries: [
-            {
-                country: {
-                    id: 'USA',
-                    name: 'United States',
-                },
-                players: [
-                    {
-                        id: '1',
-                        name: 'Hunter Arbeeny',
-                        number: 11,
-                        position: 'st, cf',
-                    },
-                    {
-                        id: '2',
-                        name: 'Chrisitan Pulisic',
-                        number: 10,
-                        position: 'lw, st',
-                    },
-                ],
-            },
-            {
-                country: {
-                    id: 'ITA',
-                    name: 'Italy',
-                },
-                players: [
-                    {
-                        id: '1',
-                        name: 'Giovanni Bonducci',
-                        number: 31,
-                        position: 'cb',
-                    },
-                    {
-                        id: '2',
-                        name: 'John Lotito',
-                        number: 24,
-                        position: 'cm',
-                    },
-                ],
-            },
+      },
+      {
+        country: {
+          id: "ITA",
+          name: "Italy",
+        },
+        players: [
+          {
+            id: "1",
+            name: "Giovanni Bonducci",
+            number: 31,
+            position: "cb",
+          },
+          {
+            id: "2",
+            name: "John Lotito",
+            number: 24,
+            position: "cm",
+          },
         ],
-        winner: 'ITA',
-    },
+      },
+    ],
+    winner: "USA",
+  },
+  2022: {
+    countries: [
+      {
+        country: {
+          id: "USA",
+          name: "United States",
+        },
+        players: [
+          {
+            id: "1",
+            name: "Hunter Arbeeny",
+            number: 11,
+            position: "st, cf",
+          },
+          {
+            id: "2",
+            name: "Chrisitan Pulisic",
+            number: 10,
+            position: "lw, st",
+          },
+        ],
+      },
+      {
+        country: {
+          id: "ITA",
+          name: "Italy",
+        },
+        players: [
+          {
+            id: "1",
+            name: "Giovanni Bonducci",
+            number: 31,
+            position: "cb",
+          },
+          {
+            id: "2",
+            name: "John Lotito",
+            number: 24,
+            position: "cm",
+          },
+        ],
+      },
+    ],
+    winner: "ITA",
+  },
 };
-
-
 
 const app: Express = express();
 const port = 3000;
 
 // middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: false}));
+app.use(express.urlencoded({ extended: false }));
 
-app.use("/")
+app.use("/");
 
-app.get('/', (request: Request, response: Response) => {
-    response.send(records);
+app.get("/", (request: Request, response: Response) => {
+  response.send(records);
 });
 
-app.get('/data', async (req: Request, res: Response) => {
-    try {
-        const { rows } = await pool.query('SELECT * FROM your_table');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Server Error');
-    }
+// app.get("/data", async (req: Request, res: Response) => {
+//   try {
+//     const { rows } = await query("SELECT * FROM your_table");
+//     res.status(200).json(rows);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).send("Server Error");
+//   }
+// });
+
+app.get("/years", async (request: Request, response: Response) => {
+  try { 
+    const result = await query('SELECT year FROM years ORDER BY year ASC')
+    const yearKeys = result.rows.map(row => row.year);
+    response.status(200).send(yearKeys);
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error executing query', err.message);
+    response.status(500).send('Error fetching years');
+  }  
 });
 
-app.get('/years', (request: Request, response: Response) => {
-    const yearKeys = Object.keys(records).map(key => Number(key));
-    response.send(yearKeys);
-});
+app.get("/years/:year/winner", async (request: Request, response: Response) => {
+  const year = parseInt(request.params.year);
+  if (isNaN(year)) {
+    return response.status(400).send('Invalid year provided');
+  }
 
-app.get('/years/:year/winner', (request: Request, response: Response) => {
-    const year = parseInt(request.params.year);
-    const yearRecord = records[year];
-    
-    if (!yearRecord || !yearRecord.winner) {
+  try {
+    const result = await query (`
+     SELECT r.year_id, c.name AS country_name
+     FROM records r
+     JOIN countries c ON r.country_id = c.id
+     WHERE r.year_id = $1 AND r.winner = TRUE
+    `, [year]);
+
+    if (result.rows.length === 0) {
         return response.status(404).send("Winner not found for the specified year");
     }
 
-    response.status(200).send({year: year, winner: yearRecord.winner });
-})
+    const { year_id, country_name } = result.rows[0];
+    response.status(200).send({ year: year_id, winner: country_name });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error executing query', err.message);
+    response.status(500).send('Error fetching winner for the specified year');
+  }
+});  
 
-app.post('/years/:year/winner', (request: Request, response: Response) => {
-    const year = parseInt(request.params.year);
-    const { winner } = request.body;
+//   const yearRecord = records[year];
 
-    if (!winner) {
-        return response.status(400).send("Winner information is required");
-    }
+//   if (!yearRecord || !yearRecord.winner) {
+//     return response.status(404).send("Winner not found for the specified year");
+//   }
 
-    if (!records[year]) {
-        records[year] = { countries: [], winner: undefined};
-    }
+//   response.status(200).send({ year: year, winner: yearRecord.winner });
+// });
 
-    records[year].winner = winner;
+app.post("/years/:year/winner", async (request: Request, response: Response) => {
+  const year = parseInt(request.params.year);
+  const { winner } = request.body;
 
-    return response.status(201).send({ year: year, winner: records[year].winner });
-})
+  if (!winner) {
+    return response.status(400).send("Winner information is required");
+  }
 
-app.get('/years/:year/countries', (request: Request, response: Response) => {
-    const year = parseInt(request.params.year);
-    const data = records[year] ?? [];
-    if (!data) {
-        return response.status(404).send("Year record not found.");
-    }
-    const countries = data.countries.map(({ country }) => ({ 
-        id: country.id, 
-        name: country.name,
-    }));
-    response.send(countries);
+  if (isNaN(year)) {
+    return response.status(400).send('Invalid year provided');
+  }
+
+  try {
+    const checkResult = await query(`
+        SELECT * FROM records WHERE year_id = $1
+    `, [year]);
+
+    if (checkResult.rows.length > 0) {
+        await query(`
+            UPDATE records SET winner = TRUE, country_id = $2 WHERE year_id = $1
+        `, [year, winner]);
+    } else {
+        await query(`
+            INSERT INTO records (year_id, country_id, winner)
+            VALUES ($1, $2, TRUE)
+        `, [year, winner]);
+    } 
+
+    response.status(201).send({ year: year, winner: winner });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error executing query', err.message);
+    response.status(500).send('Error processing winner information');
+  }
+
+//   if (!records[year]) {
+//     records[year] = { countries: [], winner: undefined };
+//   }
+
+//   records[year].winner = winner;
+
+//   return response
+//     .status(201)
+//     .send({ year: year, winner: records[year].winner });
 });
 
-app.post('/years/:year/countries', (request: Request, response: Response) => {
-    const year = parseInt(request.params.year);
-    const { id, name } = request.body;
-
-    if (!id || !name) {
-        return response.status(400).send('Please provide all required fields!');
-    }
-
-    if (!records[year]) {
-        records[year] = { countries: [], winner: undefined };
-    }
-
-    const newCountry: Country = {
-        id,
-        name
-    };
-    const newRecord = {country: newCountry, players: []}
-    records[year].countries.push(newRecord);
-
-    // Ensure you're returning the newRecord or structure similar to what the test expects
-    return response.status(201).send(newRecord);
-
-
-    // const record = records[year]
-    // if (record) {
-    //     record.push({ country, players: [] });
-    // } else {
-    //     records[year] = [{ country, players: [] }];
-    // }
-    // response.send(record);
+app.get("/years/:year/countries", (request: Request, response: Response) => {
+  const year = parseInt(request.params.year);
+  const data = records[year] ?? [];
+  if (!data) {
+    return response.status(404).send("Year record not found.");
+  }
+  const countries = data.countries.map(({ country }) => ({
+    id: country.id,
+    name: country.name,
+  }));
+  response.send(countries);
 });
 
-app.get('/years/:year/countries/:countriesId/players', (req: Request, res: Response) => {
+app.post("/years/:year/countries", (request: Request, response: Response) => {
+  const year = parseInt(request.params.year);
+  const { id, name } = request.body;
+
+  if (!id || !name) {
+    return response.status(400).send("Please provide all required fields!");
+  }
+
+  if (!records[year]) {
+    records[year] = { countries: [], winner: undefined };
+  }
+
+  const newCountry: Country = {
+    id,
+    name,
+  };
+  const newRecord = { country: newCountry, players: [] };
+  records[year].countries.push(newRecord);
+
+  // Ensure you're returning the newRecord or structure similar to what the test expects
+  return response.status(201).send(newRecord);
+
+  // const record = records[year]
+  // if (record) {
+  //     record.push({ country, players: [] });
+  // } else {
+  //     records[year] = [{ country, players: [] }];
+  // }
+  // response.send(record);
+});
+
+app.get(
+  "/years/:year/countries/:countriesId/players",
+  (req: Request, res: Response) => {
     const year = parseInt(req.params.year);
     const countryId = req.params.countriesId;
     const record = records[year];
     if (!record) {
-        return res.status(404).send('Year Record not found');
+      return res.status(404).send("Year Record not found");
     }
-    const countryRecord = record.countries.find((record) => record.country.id === countryId);
+    const countryRecord = record.countries.find(
+      (record) => record.country.id === countryId
+    );
     if (!countryRecord) {
-        return res.status(404).send('Country not found');
+      return res.status(404).send("Country not found");
     }
     res.send(countryRecord.players);
-})
+  }
+);
 
-app.post('/years/:year/countries/:countryId/players', (req: Request, res: Response) => {
+app.post(
+  "/years/:year/countries/:countryId/players",
+  (req: Request, res: Response) => {
     const year = parseInt(req.params.year);
     const countryId = req.params.countryId;
     const record = records[year];
     if (!record) {
-        return res.status(404).send('Record not found');
+      return res.status(404).send("Record not found");
     }
-    
-    const countryRecord = record.countries.find((record) => record.country.id === countryId);
+
+    const countryRecord = record.countries.find(
+      (record) => record.country.id === countryId
+    );
     if (!countryRecord) {
-        return res.status(404).send('Country not found');
+      return res.status(404).send("Country not found");
     }
-    
+
     const { id, name, number, position } = req.body;
     if (!id || !name || !number || !position) {
-        return res.status(400).send('Please provide all required player fields!');
+      return res.status(400).send("Please provide all required player fields!");
     }
 
     const player: Player = {
-        id,
-        name,
-        number,
-        position
+      id,
+      name,
+      number,
+      position,
     };
     countryRecord.players.push(player);
     res.status(201).send(countryRecord.players);
-});
+  }
+);
 
 app.listen(port, () => {
-    console.log("Server is running at http://localhost:3000/");
+  console.log(`Server is running on port ${port}`);
 });
 
 export default app;
