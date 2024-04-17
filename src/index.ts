@@ -1,7 +1,6 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, NextFunction, Request, Response } from "express";
 
-import { query } from "../module/db";
-import { error } from "console";
+import client from "./db";
 
 // Create Score Results of a Match API endpoints
 // Write unit tests for these endpoints (jest & supertest) ;
@@ -132,8 +131,6 @@ const port = 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use("/");
-
 app.get("/", (request: Request, response: Response) => {
   response.send(records);
 });
@@ -148,44 +145,54 @@ app.get("/", (request: Request, response: Response) => {
 //   }
 // });
 
-app.get("/years", async (request: Request, response: Response) => {
-  try { 
-    const result = await query('SELECT year FROM years ORDER BY year ASC')
-    const yearKeys = result.rows.map(row => row.year);
-    response.status(200).send(yearKeys);
-  } catch (error) {
-    const err = error as Error;
-    console.error('Error executing query', err.message);
-    response.status(500).send('Error fetching years');
-  }  
-});
+app.get(
+  "/years",
+  async (request: Request, response: Response) => {
+    try {
+      const result = await client.query(
+        "SELECT year FROM years ORDER BY year ASC"
+      );
+      const yearKeys = result.rows.map((row) => {
+        return row.year;
+      });
+      response.status(200).send(yearKeys);
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error executing query', err.message);
+      response.status(500).send('Error fetching years');
+    }
+  }
+);
 
 app.get("/years/:year/winner", async (request: Request, response: Response) => {
   const year = parseInt(request.params.year);
   if (isNaN(year)) {
-    return response.status(400).send('Invalid year provided');
+    return response.status(400).send("Invalid year provided");
   }
 
   try {
-    const result = await query (`
-     SELECT r.year_id, c.name AS country_name
-     FROM records r
-     JOIN countries c ON r.country_id = c.id
-     WHERE r.year_id = $1 AND r.winner = TRUE
-    `, [year]);
+    const result = await client.query(
+      `SELECT r.year_id, c.name AS country_name
+       FROM records r
+       JOIN countries c ON r.country_id = c.id
+       WHERE r.year_id = $1 AND r.winner = TRUE`,
+      [year]
+    );
 
     if (result.rows.length === 0) {
-        return response.status(404).send("Winner not found for the specified year");
+      return response
+        .status(404)
+        .send("Winner not found for the specified year");
     }
 
     const { year_id, country_name } = result.rows[0];
     response.status(200).send({ year: year_id, winner: country_name });
   } catch (error) {
     const err = error as Error;
-    console.error('Error executing query', err.message);
-    response.status(500).send('Error fetching winner for the specified year');
+    console.error("Error executing query", err.message);
+    response.status(500).send("Error fetching winner for the specified year");
   }
-});  
+});
 
 //   const yearRecord = records[year];
 
@@ -196,51 +203,51 @@ app.get("/years/:year/winner", async (request: Request, response: Response) => {
 //   response.status(200).send({ year: year, winner: yearRecord.winner });
 // });
 
-app.post("/years/:year/winner", async (request: Request, response: Response) => {
-  const year = parseInt(request.params.year);
-  const { winner } = request.body;
+app.post(
+  "/years/:year/winner",
+  async (request: Request, response: Response) => {
+    const year = parseInt(request.params.year);
+    const { winner } = request.body;
 
-  if (!winner) {
-    return response.status(400).send("Winner information is required");
+    if (!winner) {
+      return response.status(400).send("Winner information is required");
+    }
+
+    if (isNaN(year)) {
+      return response.status(400).send("Invalid year provided");
+    }
+
+    try {
+      const checkResult = await client.query(
+        `SELECT * FROM records WHERE year_id = $1`,
+        [year]
+      );
+
+      if (checkResult.rows.length > 0) {
+        await client.query(
+          `UPDATE records SET winner = TRUE, country_id = $2 WHERE year_id = $1`,
+          [year, winner]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO records (year_id, country_id, winner)
+           VALUES ($1, $2, TRUE)`,
+          [year, winner]
+        );
+      }
+
+      response.status(201).send({ year: year, winner: winner });
+    } catch (error) {
+      const err = error as Error;
+      console.error("Error executing query", err.message);
+      response.status(500).send("Error processing winner information");
+    }
   }
+);
 
-  if (isNaN(year)) {
-    return response.status(400).send('Invalid year provided');
-  }
-
-  try {
-    const checkResult = await query(`
-        SELECT * FROM records WHERE year_id = $1
-    `, [year]);
-
-    if (checkResult.rows.length > 0) {
-        await query(`
-            UPDATE records SET winner = TRUE, country_id = $2 WHERE year_id = $1
-        `, [year, winner]);
-    } else {
-        await query(`
-            INSERT INTO records (year_id, country_id, winner)
-            VALUES ($1, $2, TRUE)
-        `, [year, winner]);
-    } 
-
-    response.status(201).send({ year: year, winner: winner });
-  } catch (error) {
-    const err = error as Error;
-    console.error('Error executing query', err.message);
-    response.status(500).send('Error processing winner information');
-  }
-
-//   if (!records[year]) {
-//     records[year] = { countries: [], winner: undefined };
-//   }
-
-//   records[year].winner = winner;
-
-//   return response
-//     .status(201)
-//     .send({ year: year, winner: records[year].winner });
-});
+// #TODO: Finish SQL query for end points, Test the data
+// #TODO: Start the React Frontend
+// #TODO: write unit tests for endpoints 
 
 app.get("/years/:year/countries", (request: Request, response: Response) => {
   const year = parseInt(request.params.year);
@@ -276,14 +283,6 @@ app.post("/years/:year/countries", (request: Request, response: Response) => {
 
   // Ensure you're returning the newRecord or structure similar to what the test expects
   return response.status(201).send(newRecord);
-
-  // const record = records[year]
-  // if (record) {
-  //     record.push({ country, players: [] });
-  // } else {
-  //     records[year] = [{ country, players: [] }];
-  // }
-  // response.send(record);
 });
 
 app.get(
