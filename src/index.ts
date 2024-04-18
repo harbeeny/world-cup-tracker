@@ -2,128 +2,6 @@ import express, { Express, NextFunction, Request, Response } from "express";
 
 import client from "./db";
 
-// Create Score Results of a Match API endpoints
-// Write unit tests for these endpoints (jest & supertest) ;
-
-interface Country {
-  id: string;
-  name: string;
-}
-
-interface Player {
-  id: string;
-  name: string;
-  number: number;
-  position: string;
-}
-
-interface Record {
-  country: Country;
-  players: Player[];
-}
-
-interface YearRecord {
-  countries: Record[];
-  winner?: string;
-}
-
-interface Records {
-  [key: number]: YearRecord;
-}
-
-const records: Records = {
-  2018: {
-    countries: [
-      {
-        country: {
-          id: "USA",
-          name: "United States",
-        },
-        players: [
-          {
-            id: "1",
-            name: "Hunter Arbeeny",
-            number: 11,
-            position: "st, cf",
-          },
-          {
-            id: "2",
-            name: "Chrisitan Pulisic",
-            number: 10,
-            position: "lw, st",
-          },
-        ],
-      },
-      {
-        country: {
-          id: "ITA",
-          name: "Italy",
-        },
-        players: [
-          {
-            id: "1",
-            name: "Giovanni Bonducci",
-            number: 31,
-            position: "cb",
-          },
-          {
-            id: "2",
-            name: "John Lotito",
-            number: 24,
-            position: "cm",
-          },
-        ],
-      },
-    ],
-    winner: "USA",
-  },
-  2022: {
-    countries: [
-      {
-        country: {
-          id: "USA",
-          name: "United States",
-        },
-        players: [
-          {
-            id: "1",
-            name: "Hunter Arbeeny",
-            number: 11,
-            position: "st, cf",
-          },
-          {
-            id: "2",
-            name: "Chrisitan Pulisic",
-            number: 10,
-            position: "lw, st",
-          },
-        ],
-      },
-      {
-        country: {
-          id: "ITA",
-          name: "Italy",
-        },
-        players: [
-          {
-            id: "1",
-            name: "Giovanni Bonducci",
-            number: 31,
-            position: "cb",
-          },
-          {
-            id: "2",
-            name: "John Lotito",
-            number: 24,
-            position: "cm",
-          },
-        ],
-      },
-    ],
-    winner: "ITA",
-  },
-};
-
 const app: Express = express();
 const port = 3000;
 
@@ -131,8 +9,25 @@ const port = 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.get("/", (request: Request, response: Response) => {
-  response.send(records);
+app.get("/", async (request, response) => {
+  try {
+    const summaryQuery = 
+            `SELECT 
+                y.year AS year,
+                COUNT(DISTINCT r.country_id) AS countries_participated,
+                BOOL_OR(r.winner) AS has_winner
+            FROM records r
+            JOIN years y ON y.id = r.year_id
+            GROUP BY y.year;`;
+    const { rows } = await client.query(summaryQuery);
+    if (rows.length === 0) {
+      return response.status(404).send("No records found.");
+    }
+    response.status(200).send(rows);
+  } catch (error) {
+    console.error("Error fetching records summary:", error);
+    response.status(500).send("Failed to retrieve data");
+  }
 });
 
 // app.get("/data", async (req: Request, res: Response) => {
@@ -145,24 +40,21 @@ app.get("/", (request: Request, response: Response) => {
 //   }
 // });
 
-app.get(
-  "/years",
-  async (request: Request, response: Response) => {
-    try {
-      const result = await client.query(
-        "SELECT year FROM years ORDER BY year ASC"
-      );
-      const yearKeys = result.rows.map((row) => {
-        return row.year;
-      });
-      response.status(200).send(yearKeys);
-    } catch (error) {
-      const err = error as Error;
-      console.error('Error executing query', err.message);
-      response.status(500).send('Error fetching years');
-    }
+app.get("/years", async (request: Request, response: Response) => {
+  try {
+    const result = await client.query(
+      "SELECT year FROM years ORDER BY year ASC"
+    );
+    const yearKeys = result.rows.map((row) => {
+      return row.year;
+    });
+    response.status(200).send(yearKeys);
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error executing query", err.message);
+    response.status(500).send("Error fetching years");
   }
-);
+});
 
 app.get("/years/:year/winner", async (request: Request, response: Response) => {
   const year = parseInt(request.params.year);
@@ -172,7 +64,7 @@ app.get("/years/:year/winner", async (request: Request, response: Response) => {
 
   try {
     const result = await client.query(
-      `SELECT r.year_id, c.name AS country_name
+      `SELECT r.year_id, c.name AS country_name 
        FROM records r
        JOIN countries c ON r.country_id = c.id
        WHERE r.year_id = $1 AND r.winner = TRUE`,
@@ -247,93 +139,151 @@ app.post(
 
 // #TODO: Finish SQL query for end points, Test the data
 // #TODO: Start the React Frontend
-// #TODO: write unit tests for endpoints 
+// #TODO: write unit tests for endpoints
 
-app.get("/years/:year/countries", (request: Request, response: Response) => {
-  const year = parseInt(request.params.year);
-  const data = records[year] ?? [];
-  if (!data) {
-    return response.status(404).send("Year record not found.");
+app.get(
+  "/years/:year/countries",
+  async (request: Request, response: Response) => {
+    const year = parseInt(request.params.year);
+    if (isNaN(year)) {
+      return response.status(400).send("Invalid year format.");
+    }
+
+    try {
+      const result = await client.query(
+        `SELECT c.id, c.name FROM countries c
+         JOIN records r ON r.country_id = c.id WHERE r.year_id = $1`,
+        [year]
+      );
+
+      if (result.rows.length === 0) {
+        return response.status(404).send("Year record not found.");
+      }
+
+      response.send(result.rows);
+    } catch (error) {
+      console.error(error);
+      response.status(500).send("An error occured while retrieving data.");
+    }
+    //   const data = records[year] ?? [];
+    //   if (!data) {
+    //     return response.status(404).send("Year record not found.");
+    //   }
+    //   const countries = data.countries.map(({ country }) => ({
+    //     id: country.id,
+    //     name: country.name,
+    //   }));
+    //   response.send(countries);
   }
-  const countries = data.countries.map(({ country }) => ({
-    id: country.id,
-    name: country.name,
-  }));
-  response.send(countries);
-});
+);
 
-app.post("/years/:year/countries", (request: Request, response: Response) => {
-  const year = parseInt(request.params.year);
-  const { id, name } = request.body;
+app.post(
+  "/years/:year/countries",
+  async (request: Request, response: Response) => {
+    const year = parseInt(request.params.year);
+    const { id, name } = request.body;
 
-  if (!id || !name) {
-    return response.status(400).send("Please provide all required fields!");
+    if (!id || !name) {
+      return response.status(400).send("Please provide all required fields!");
+    }
+
+    try {
+      await client.query(`BEGIN`);
+
+      const countryQuery = `
+        INSERT INTO countries (id, name)
+        VALUES ($1, $2)
+        ON CONFLICT (id) DO NOTHING;
+    `;
+      await client.query(countryQuery, [id, name]);
+
+      const recordCheck = await client.query(
+        `SELECT 1 FROM records WHERE year_id = $1 AND country_id = $2`,
+        [year, id]
+      );
+
+      if (recordCheck.rows.length === 0) {
+        const insertRecord = `INSERT INTO records (year_id, country_id)
+         VALUES ($1, $2)`;
+        await client.query(insertRecord, [year, id]);
+      }
+
+      await client.query(`COMMIT`);
+
+      const newRecord = { country: { id, name }, players: [] };
+      response.status(201).send(newRecord);
+    } catch (error) {
+      await client.query(`ROLLBACK`);
+      console.error(error);
+      response.status(500).send("Failed to insert new country record.");
+    }
   }
-
-  if (!records[year]) {
-    records[year] = { countries: [], winner: undefined };
-  }
-
-  const newCountry: Country = {
-    id,
-    name,
-  };
-  const newRecord = { country: newCountry, players: [] };
-  records[year].countries.push(newRecord);
-
-  // Ensure you're returning the newRecord or structure similar to what the test expects
-  return response.status(201).send(newRecord);
-});
+);
 
 app.get(
   "/years/:year/countries/:countriesId/players",
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const year = parseInt(req.params.year);
     const countryId = req.params.countriesId;
-    const record = records[year];
-    if (!record) {
-      return res.status(404).send("Year Record not found");
+
+    try {
+      const queryText = `
+              SELECT p.id, p.name, p.number, p.position FROM players p
+              WHERE p.year_id = $1 AND p.country_id = $2;
+          `;
+      const params = [year, countryId];
+      const result = await client.query(queryText, params);
+
+      if (result.rows.length === 0) {
+        return res
+          .status(404)
+          .send("No players found for the given year and country");
+      }
+
+      res.send(result.rows);
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Failed to retrieve data");
     }
-    const countryRecord = record.countries.find(
-      (record) => record.country.id === countryId
-    );
-    if (!countryRecord) {
-      return res.status(404).send("Country not found");
-    }
-    res.send(countryRecord.players);
   }
 );
 
 app.post(
   "/years/:year/countries/:countryId/players",
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const year = parseInt(req.params.year);
     const countryId = req.params.countryId;
-    const record = records[year];
-    if (!record) {
-      return res.status(404).send("Record not found");
-    }
-
-    const countryRecord = record.countries.find(
-      (record) => record.country.id === countryId
-    );
-    if (!countryRecord) {
-      return res.status(404).send("Country not found");
-    }
-
     const { id, name, number, position } = req.body;
+
     if (!id || !name || !number || !position) {
       return res.status(400).send("Please provide all required player fields!");
     }
 
-    const player: Player = {
-      id,
-      name,
-      number,
-      position,
-    };
-    countryRecord.players.push(player);
-    res.status(201).send(countryRecord.players);
+    try {
+      const yearCountryExist = `SELECT 1 FROM records WHERE year_id = $1 AND country_id = $2;`;
+      const check = await client.query(yearCountryExist, [year, countryId]);
+      if (check.rows.length === 0) {
+        return res
+          .status(404)
+          .send("Record not found for the given year and country");
+      }
+
+      const insertPlayer = `INSERT INTO players (id, name, number, position, country_id, year_id)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`;
+      const player = await client.query(insertPlayer, [
+        id,
+        name,
+        number,
+        position,
+        countryId,
+        year,
+      ]);
+
+      return res.status(201).send(player.rows[0]);
+    } catch (error) {
+      console.error("Failed to insert player:", error);
+      res.status(500).send("Failed to insert player data");
+    }
   }
 );
 
